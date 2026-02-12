@@ -1,0 +1,340 @@
+// Prisma schema for HealthVillage
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+enum AppointmentStatus {
+  REQUESTED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ConsultationStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum PrescriptionStatus {
+  ACTIVE
+  FULFILLED
+  EXPIRED
+  CANCELLED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  PUSH
+  WHATSAPP
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  EXPORT
+}
+
+enum FileType {
+  LAB
+  IMAGE
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum TriageStatus {
+  OPEN
+  RESOLVED
+}
+
+model User {
+  id            String      @id @default(cuid())
+  email         String      @unique
+  passwordHash  String
+  role          Role
+  name          String
+  phone         String?
+  locale        String      @default("en-US")
+  isActive      Boolean     @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  patientProfile PatientProfile?
+  doctorProfile  DoctorProfile?
+  adminProfile   AdminProfile?
+
+  patientAppointments Appointment[] @relation("patientAppointments")
+  doctorAppointments  Appointment[] @relation("doctorAppointments")
+  consultations       Consultation[] @relation("consultationParticipants")
+  messages            Message[]
+  notifications       Notification[]
+  auditLogs           AuditLog[]
+  fileAssets          FileAsset[] @relation("fileOwner")
+  doctorAvailability  DoctorAvailability[] @relation("doctorAvailability")
+  ehrRecordsAsPatient EHRRecord[] @relation("ehrPatient")
+  ehrRecordsAsDoctor  EHRRecord[] @relation("ehrDoctor")
+  prescriptionsAsPatient Prescription[] @relation("prescriptionPatient")
+  prescriptionsAsDoctor  Prescription[] @relation("prescriptionDoctor")
+  deviceReadings      DeviceReading[] @relation("patientDeviceReadings")
+  triageSessions      TriageSession[]
+}
+
+model PatientProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  dateOfBirth        DateTime?
+  sexAtBirth         String?
+  bloodType          String?
+  allergiesEncrypted String?
+  chronicEncrypted   String?
+  emergencyEncrypted String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  user       User       @relation(fields: [userId], references: [id])
+}
+
+model DoctorProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  specialty      String
+  licenseNumber  String
+  bio            String?
+  languages      String?
+  location       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user          User              @relation(fields: [userId], references: [id])
+}
+
+model AdminProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  department String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+model DoctorAvailability {
+  id        String   @id @default(cuid())
+  doctorId  String
+  dayOfWeek Int
+  startTime String
+  endTime   String
+  timezone  String   @default("UTC")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctor User @relation("doctorAvailability", fields: [doctorId], references: [id])
+
+  @@index([doctorId, dayOfWeek])
+}
+
+model Appointment {
+  id            String             @id @default(cuid())
+  patientId     String
+  doctorId      String
+  startAt       DateTime
+  endAt         DateTime
+  status        AppointmentStatus  @default(REQUESTED)
+  reason        String?
+  locationType  String             @default("VIDEO")
+  queuePosition Int?
+  reminderSentAt DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  patient User @relation("patientAppointments", fields: [patientId], references: [id])
+  doctor  User @relation("doctorAppointments", fields: [doctorId], references: [id])
+  consultation Consultation?
+
+  @@index([doctorId, startAt])
+  @@index([patientId, startAt])
+}
+
+model Consultation {
+  id           String              @id @default(cuid())
+  appointmentId String             @unique
+  roomKey      String
+  status       ConsultationStatus  @default(SCHEDULED)
+  startedAt    DateTime?
+  endedAt      DateTime?
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+  participants User[]     @relation("consultationParticipants")
+  messages     Message[]
+  fileAssets   FileAsset[]
+}
+
+model EHRRecord {
+  id                 String   @id @default(cuid())
+  patientId          String
+  doctorId           String
+  appointmentId      String?
+  symptomsEncrypted  String
+  diagnosisEncrypted String
+  treatmentEncrypted String
+  notesEncrypted     String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  patient User @relation("ehrPatient", fields: [patientId], references: [id])
+  doctor  User @relation("ehrDoctor", fields: [doctorId], references: [id])
+  appointment Appointment? @relation(fields: [appointmentId], references: [id])
+  prescriptions Prescription[]
+  fileAssets   FileAsset[]
+
+  @@index([patientId, createdAt])
+}
+
+model Prescription {
+  id                  String             @id @default(cuid())
+  patientId           String
+  doctorId            String
+  ehrRecordId         String?
+  medicationsEncrypted String
+  dosageEncrypted     String
+  instructionsEncrypted String
+  status              PrescriptionStatus @default(ACTIVE)
+  issuedAt            DateTime           @default(now())
+  expiresAt           DateTime?
+  refillsRemaining    Int                @default(0)
+
+  patient User @relation("prescriptionPatient", fields: [patientId], references: [id])
+  doctor  User @relation("prescriptionDoctor", fields: [doctorId], references: [id])
+  ehrRecord EHRRecord?   @relation(fields: [ehrRecordId], references: [id])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  consultationId String
+  senderId       String
+  bodyEncrypted  String
+  createdAt      DateTime @default(now())
+
+  consultation Consultation @relation(fields: [consultationId], references: [id])
+  sender User @relation(fields: [senderId], references: [id])
+
+  @@index([consultationId, createdAt])
+}
+
+model FileAsset {
+  id              String   @id @default(cuid())
+  ownerId         String
+  patientId       String?
+  consultationId  String?
+  ehrRecordId     String?
+  type            FileType @default(OTHER)
+  filename        String
+  mimeType        String
+  size            Int
+  storagePath     String
+  checksum        String
+  isEncrypted     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  owner User @relation("fileOwner", fields: [ownerId], references: [id])
+  patient User? @relation(fields: [patientId], references: [id])
+  consultation Consultation? @relation(fields: [consultationId], references: [id])
+  ehrRecord EHRRecord? @relation(fields: [ehrRecordId], references: [id])
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  bodyEncrypted  String
+  channel        NotificationChannel
+  status         String   @default("scheduled")
+  scheduledAt    DateTime
+  sentAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, scheduledAt])
+}
+
+model AuditLog {
+  id         String     @id @default(cuid())
+  actorId    String
+  action     AuditAction
+  resource   String
+  resourceId String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   String?
+  createdAt  DateTime   @default(now())
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  @@index([actorId, createdAt])
+}
+
+model DeviceReading {
+  id              String   @id @default(cuid())
+  patientId       String
+  deviceType      String
+  readingEncrypted String
+  recordedAt      DateTime @default(now())
+
+  patient User @relation("patientDeviceReadings", fields: [patientId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  appointmentId String        @unique
+  amountCents   Int
+  currency      String        @default("USD")
+  status        PaymentStatus @default(PENDING)
+  provider      String        @default("MockPay")
+  reference     String?
+  createdAt     DateTime      @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+}
+
+model TriageSession {
+  id                    String       @id @default(cuid())
+  patientId             String
+  status                TriageStatus @default(OPEN)
+  symptomsEncrypted     String
+  recommendationEncrypted String
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  patient User @relation(fields: [patientId], references: [id])
+}
