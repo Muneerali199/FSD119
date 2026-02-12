@@ -1,7 +1,11 @@
 import { getSession } from '@/lib/auth';
+import { redirect } from 'next/navigation';
 
 export default async function AdminPage() {
   const session = await getSession();
+  if (session?.role !== 'ADMIN') {
+    redirect('/dashboard');
+  }
 
   return (
     <section className="grid gap-6">

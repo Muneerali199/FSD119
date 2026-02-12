@@ -15,6 +15,7 @@ export default function RegisterPage() {
 
     const res = await fetch('/api/auth/register', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: formData.get('name'),
         email: formData.get('email'),
@@ -89,7 +90,7 @@ export default function RegisterPage() {
             disabled={isLoading}
             className="w-full rounded-full bg-[var(--hv-forest)] px-6 py-3 text-sm font-semibold text-white"
           >
-            {isLoading ? 'Creating account…' : 'Create account'}
+            {isLoading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
 

@@ -28,6 +28,12 @@ body {
   min-height: 100vh;
 }
 
+h1,
+h2,
+h3 {
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+}
+
 * {
   box-sizing: border-box;
 }

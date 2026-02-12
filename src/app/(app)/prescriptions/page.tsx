@@ -4,6 +4,8 @@ import { useState } from 'react';
 
 export default function PrescriptionsPage() {
   const [status, setStatus] = useState<string | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyStatus, setHistoryStatus] = useState<string | null>(null);
 
   async function handlePrescription(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -11,6 +13,7 @@ export default function PrescriptionsPage() {
     const formData = new FormData(event.currentTarget);
     const res = await fetch('/api/prescriptions', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         patientId: formData.get('patientId'),
         ehrRecordId: formData.get('ehrRecordId') || undefined,
@@ -22,6 +25,21 @@ export default function PrescriptionsPage() {
     });
     const data = await res.json();
     setStatus(res.ok ? 'Prescription issued.' : data.error ?? 'Unable to issue.');
+  }
+
+  async function loadPrescriptions(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setHistoryStatus(null);
+    const formData = new FormData(event.currentTarget);
+    const patientId = formData.get('patientId')?.toString();
+    const url = patientId ? `/api/prescriptions?patientId=${patientId}` : '/api/prescriptions';
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) {
+      setHistoryStatus(data.error ?? 'Unable to load prescriptions.');
+      return;
+    }
+    setHistory(data.prescriptions ?? []);
   }
 
   return (
@@ -97,6 +115,34 @@ export default function PrescriptionsPage() {
         <p className="mt-3 text-sm text-[var(--hv-ink)]">
           Automated reminders keep patients on track with refills and check-ins.
         </p>
+        <form onSubmit={loadPrescriptions} className="mt-4 flex flex-wrap gap-3">
+          <input
+            name="patientId"
+            placeholder="Patient ID (optional for doctors)"
+            className="flex-1 rounded-2xl border border-[var(--hv-mist)] bg-white px-4 py-2 text-sm"
+          />
+          <button
+            type="submit"
+            className="rounded-full border border-[var(--hv-forest)] px-4 py-2 text-sm font-semibold text-[var(--hv-forest)]"
+          >
+            Load prescriptions
+          </button>
+        </form>
+        {historyStatus && <p className="mt-2 text-sm text-[var(--hv-ember)]">{historyStatus}</p>}
+        <div className="mt-4 space-y-3 text-sm text-[var(--hv-ink)]">
+          {history.length === 0 && <p className="text-[var(--hv-sage)]">No prescriptions loaded.</p>}
+          {history.map((rx) => (
+            <div key={rx.id} className="rounded-2xl bg-[var(--hv-mist)] p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--hv-sage)]">
+                {new Date(rx.issuedAt).toLocaleString()}
+              </p>
+              <p className="mt-2"><span className="font-semibold">Medications:</span> {rx.medications}</p>
+              <p><span className="font-semibold">Dosage:</span> {rx.dosage}</p>
+              <p><span className="font-semibold">Instructions:</span> {rx.instructions}</p>
+              <p><span className="font-semibold">Status:</span> {rx.status}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

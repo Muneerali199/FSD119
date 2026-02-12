@@ -4,6 +4,7 @@ import { useState } from 'react';
 
 export default function SchedulingPage() {
   const [status, setStatus] = useState<string | null>(null);
+  const [availabilityStatus, setAvailabilityStatus] = useState<string | null>(null);
 
   async function handleBooking(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -11,6 +12,7 @@ export default function SchedulingPage() {
     const formData = new FormData(event.currentTarget);
     const res = await fetch('/api/appointments', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         doctorId: formData.get('doctorId'),
         startAt: formData.get('startAt'),
@@ -21,6 +23,24 @@ export default function SchedulingPage() {
     });
     const data = await res.json();
     setStatus(res.ok ? 'Appointment reserved.' : data.error ?? 'Booking failed.');
+  }
+
+  async function handleAvailability(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAvailabilityStatus(null);
+    const formData = new FormData(event.currentTarget);
+    const res = await fetch('/api/availability', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dayOfWeek: Number(formData.get('dayOfWeek')),
+        startTime: formData.get('startTime'),
+        endTime: formData.get('endTime'),
+        timezone: formData.get('timezone'),
+      }),
+    });
+    const data = await res.json();
+    setAvailabilityStatus(res.ok ? 'Availability saved.' : data.error ?? 'Unable to save.');
   }
 
   return (
@@ -107,6 +127,68 @@ export default function SchedulingPage() {
             selected channel (SMS, email, or WhatsApp).
           </p>
         </div>
+      </div>
+
+      <div className="hv-card p-6">
+        <p className="text-sm uppercase tracking-[0.3em] text-[var(--hv-sage)]">Clinician schedule</p>
+        <p className="mt-2 text-sm text-[var(--hv-sage)]">
+          Doctors can publish available blocks and manage queue order.
+        </p>
+        <form onSubmit={handleAvailability} className="mt-6 grid gap-4 md:grid-cols-4">
+          <label className="block text-sm font-medium text-[var(--hv-ink)]">
+            Day of week
+            <select
+              name="dayOfWeek"
+              className="mt-2 w-full rounded-2xl border border-[var(--hv-mist)] bg-white px-4 py-3 text-sm"
+              defaultValue="1"
+            >
+              <option value="1">Monday</option>
+              <option value="2">Tuesday</option>
+              <option value="3">Wednesday</option>
+              <option value="4">Thursday</option>
+              <option value="5">Friday</option>
+              <option value="6">Saturday</option>
+              <option value="0">Sunday</option>
+            </select>
+          </label>
+          <label className="block text-sm font-medium text-[var(--hv-ink)]">
+            Start
+            <input
+              name="startTime"
+              type="time"
+              required
+              className="mt-2 w-full rounded-2xl border border-[var(--hv-mist)] bg-white px-4 py-3 text-sm"
+            />
+          </label>
+          <label className="block text-sm font-medium text-[var(--hv-ink)]">
+            End
+            <input
+              name="endTime"
+              type="time"
+              required
+              className="mt-2 w-full rounded-2xl border border-[var(--hv-mist)] bg-white px-4 py-3 text-sm"
+            />
+          </label>
+          <label className="block text-sm font-medium text-[var(--hv-ink)]">
+            Timezone
+            <input
+              name="timezone"
+              defaultValue="UTC"
+              className="mt-2 w-full rounded-2xl border border-[var(--hv-mist)] bg-white px-4 py-3 text-sm"
+            />
+          </label>
+          <div className="md:col-span-4">
+            <button
+              type="submit"
+              className="rounded-full bg-[var(--hv-forest)] px-6 py-3 text-sm font-semibold text-white"
+            >
+              Save availability
+            </button>
+          </div>
+        </form>
+        {availabilityStatus && (
+          <p className="mt-4 text-sm text-[var(--hv-ember)]">{availabilityStatus}</p>
+        )}
       </div>
     </section>
   );

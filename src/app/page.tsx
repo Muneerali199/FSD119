@@ -30,7 +30,7 @@ export default function Home() {
             Built for low bandwidth
           </span>
           <h1 className="mt-6 text-4xl font-semibold text-[var(--hv-ink)] md:text-5xl">
-            Care that travels well — from village clinics to regional hospitals.
+            Care that travels well from village clinics to regional hospitals.
           </h1>
           <p className="mt-4 text-base text-[var(--hv-sage)] md:text-lg">
             HealthVillage unifies scheduling, secure consultations, and electronic health records in

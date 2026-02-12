@@ -15,6 +15,7 @@ export default function LoginPage() {
 
     const res = await fetch('/api/auth/login', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         email: formData.get('email'),
         password: formData.get('password'),
@@ -65,7 +66,7 @@ export default function LoginPage() {
             disabled={isLoading}
             className="w-full rounded-full bg-[var(--hv-forest)] px-6 py-3 text-sm font-semibold text-white"
           >
-            {isLoading ? 'Signing in…' : 'Sign in'}
+            {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
 

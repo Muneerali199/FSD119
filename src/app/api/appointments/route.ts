@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { scheduleReminder } from '@/lib/notifications';
 import { logAudit } from '@/lib/audit';
 import { requireRole } from '@/lib/rbac';
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -31,6 +32,17 @@ export async function POST(request: Request) {
         reason,
         locationType,
         status: 'CONFIRMED',
+      },
+    });
+
+    const roomKey = crypto.randomBytes(16).toString('hex');
+    await db.consultation.create({
+      data: {
+        appointmentId: appointment.id,
+        roomKey,
+        participants: {
+          connect: [{ id: session!.sub }, { id: doctorId }],
+        },
       },
     });
 
@@ -75,4 +87,28 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: 'Server error.' }, { status: 500 });
   }
+}
+
+export async function GET(request: Request) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const doctorId = searchParams.get('doctorId');
+
+  const where =
+    session.role === 'DOCTOR'
+      ? { doctorId: session.sub }
+      : session.role === 'PATIENT'
+      ? { patientId: session.sub }
+      : doctorId
+      ? { doctorId }
+      : {};
+
+  const appointments = await db.appointment.findMany({
+    where,
+    orderBy: { startAt: 'asc' },
+  });
+
+  return NextResponse.json({ ok: true, appointments });
 }

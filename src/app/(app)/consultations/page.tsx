@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import VideoConsultation from '@/components/VideoConsultation';
+import ConsultationChat from '@/components/ConsultationChat';
+import FileSharePanel from '@/components/FileSharePanel';
 
 export default function ConsultationsPage() {
   const [status, setStatus] = useState('');
@@ -10,6 +13,7 @@ export default function ConsultationsPage() {
     const formData = new FormData(event.currentTarget);
     const res = await fetch('/api/consultations/join', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ roomKey: formData.get('roomKey') }),
     });
     const data = await res.json();
@@ -39,6 +43,13 @@ export default function ConsultationsPage() {
           </button>
         </form>
         {status && <p className="mt-4 text-sm text-[var(--hv-ember)]">{status}</p>}
+      </div>
+
+      <VideoConsultation />
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <ConsultationChat />
+        <FileSharePanel />
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">

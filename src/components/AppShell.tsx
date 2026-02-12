@@ -4,15 +4,16 @@ import { ReactNode } from 'react';
 type NavItem = {
   label: string;
   href: string;
+  roles?: string[];
 };
 
 const navItems: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard' },
-  { label: 'Scheduling', href: '/scheduling' },
-  { label: 'Consultations', href: '/consultations' },
-  { label: 'Medical Records', href: '/records' },
-  { label: 'Prescriptions', href: '/prescriptions' },
-  { label: 'Admin', href: '/admin' },
+  { label: 'Scheduling', href: '/scheduling', roles: ['PATIENT', 'DOCTOR', 'ADMIN'] },
+  { label: 'Consultations', href: '/consultations', roles: ['PATIENT', 'DOCTOR'] },
+  { label: 'Medical Records', href: '/records', roles: ['PATIENT', 'DOCTOR'] },
+  { label: 'Prescriptions', href: '/prescriptions', roles: ['PATIENT', 'DOCTOR'] },
+  { label: 'Admin', href: '/admin', roles: ['ADMIN'] },
 ];
 
 export default function AppShell({
@@ -39,15 +40,17 @@ export default function AppShell({
               </div>
             </div>
             <nav className="mt-6 space-y-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--hv-ink)] hover:bg-[var(--hv-mist)]"
-                >
-                  {item.label}
-                </Link>
-              ))}
+              {navItems
+                .filter((item) => !item.roles || (role ? item.roles.includes(role) : true))
+                .map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="block rounded-xl px-3 py-2 text-sm font-medium text-[var(--hv-ink)] hover:bg-[var(--hv-mist)]"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
             </nav>
           </div>
         </aside>
